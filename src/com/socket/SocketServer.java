@@ -1,8 +1,12 @@
 package com.socket;
 
+
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.*;
 import java.sql.SQLException;
+
+import javax.imageio.ImageIO;
 
 import com.ui.ServerUI;
 
@@ -63,7 +67,7 @@ class ClientThread extends Thread {
 	 * @see java.lang.Thread#run()
 	 */
 	public void run(){  
-    	serverUI.display("Client Thread "+ ID + " running.");
+    	serverUI.display("Client Thread " + ID + " running.");
         while (clientShouldLive){  
     	    try{  
                 Message msg = (Message) streamIn.readObject();
@@ -132,6 +136,7 @@ public class SocketServer implements Runnable {
 	public Database 	db;
 	private int 		dbPort = 3306;
 	private boolean 	serverShouldLive = true;
+	private String appPath;
 	
 	/**
 	 * @param frame
@@ -169,7 +174,8 @@ public class SocketServer implements Runnable {
 
         serverUI = frame;
         serverUI.display("Server started. IP : " + InetAddress.getLocalHost() + ", Port : " + serverSocket.getLocalPort());
-		
+		appPath = getClass()	.getProtectionDomain()
+				.getCodeSource()	.getLocation()		.getPath();
         start();   
     }
 	
@@ -244,7 +250,7 @@ public class SocketServer implements Runnable {
      * @throws SQLException
      */
     public synchronized void handle(String iD, Message msg) throws SQLException{  
-		if (msg.type.equals("signout")){
+		if (msg.content.equals(".bye")){
 	            Announce("signout", "SERVER", msg.sender);
 	            remove(iD); 
 		}
@@ -253,7 +259,6 @@ public class SocketServer implements Runnable {
 	                if(findUserThread(msg.sender) == null){
 	                    if(db.checkLogin(msg.sender, msg.content)){
 	                    	allClientThreads[findClient(iD)].username = msg.sender;
-	                    	serverUI.display("'"+msg.sender+"' has logged in.");
 	                        allClientThreads[findClient(iD)].send(new Message("login", "SERVER", "TRUE", msg.sender));
 	                        Announce("newuser", "SERVER", msg.sender);//r/		type	sender	content		recipient
 	                        SendUserList(msg.sender);
@@ -263,15 +268,17 @@ public class SocketServer implements Runnable {
 	                    } 											//r/		type		sender		content		recipient
 	                }
 	                else{
-	                	allClientThreads[findClient(iD)].send(new Message("login", "SERVER", "DUPLICATE", msg.sender));
+	                	allClientThreads[findClient(iD)].send(new Message("login", "SERVER", "FALSE", msg.sender));
 	                }										//r/		type		sender		content		recipient
 	            }
 	            else if(msg.type.equals("message")){
-	                if(msg.recipient.equals("All")){
+	            	System.out.println(msg.toString());
+	                if(msg.recipient.equals("ALL")){
 	                    Announce("message", msg.sender, msg.content);
 	                }
 	                else{
-	                    findUserThread(msg.recipient).send(new Message(msg.type, msg.sender, msg.content, msg.recipient));
+	                    ClientThread thre = findUserThread(msg.recipient);
+	                    thre.send(new Message(msg.type, msg.sender, msg.content, msg.recipient));
 	                    allClientThreads[findClient(iD)].send(new Message(msg.type, msg.sender, msg.content, msg.recipient));
 	                }											//r/		type		sender		content		recipient
 	            }
@@ -297,8 +304,8 @@ public class SocketServer implements Runnable {
 	                }											//r/		type		sender		content		recipient
 	            }
 	            else if(msg.type.equals("upload_req")){
-	                if(msg.recipient.equals("All")){
-	                	allClientThreads[findClient(iD)].send(new Message("message", "SERVER", "Sending file to 'All' is forbidden", msg.sender));
+	                if(msg.recipient.equals("ALL")){
+	                	allClientThreads[findClient(iD)].send(new Message("message", "SERVER", "Uploading to 'ALL' forbidden", msg.sender));
 	                }											//r/		type		sender		content		recipient
 	                else{
 	                    findUserThread(msg.recipient).send(new Message("upload_req", msg.sender, msg.content, msg.recipient));
@@ -313,6 +320,24 @@ public class SocketServer implements Runnable {
 	                    findUserThread(msg.recipient).send(new Message("upload_res", msg.sender, msg.content, msg.recipient));
 	                }
 	            }
+	            else if(msg.type.equals("profile_data_req")){
+	            	db.LoadProfileData(msg.content);
+	            	findUserThread(msg.sender).send(new Message("profile_data_res", "SERVER", db.getName(), "name", msg.content));
+	            	findUserThread(msg.sender).send(new Message("profile_data_res", "SERVER", db.getAbout(), "about", msg.content));
+	                if(msg.dataType.equals("all") && db.getPhotoPath().length() < 5 ){ // .jpg or .png
+	                	String filePath = appPath +"//"+ db.getPhotoPath();
+	                	BufferedImage bimg = null;
+						try {
+							bimg = ImageIO.read(new File(filePath));
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+	            		bimg = ImageProcessor.scaleBalanced(bimg, BufferedImage.TYPE_INT_RGB, 130, 0);
+	            		String IP = findUserThread(msg.sender).socket.getInetAddress().getHostAddress();
+	            		Upload ul = new Upload(IP, Integer.valueOf(msg.recipient), bimg);
+	            		new Thread(ul).start();
+	                }
+	            }
 		}
     }
     
@@ -323,7 +348,7 @@ public class SocketServer implements Runnable {
      * @param content the message content
      */
     public void Announce(String type, String sender, String content){
-        Message msg = new Message(type, sender, content, "All");
+        Message msg = new Message(type, sender, content, "ALL");
         				//r/		type		sender		content		recipient
         for(int i = 0; i < clientCount; i++){
         	allClientThreads[i].send(msg);
@@ -363,7 +388,7 @@ public class SocketServer implements Runnable {
     int pos = findClient(iD);
         if (pos >= 0){  
         	ClientThread toTerminate = allClientThreads[pos];
-            serverUI.display("Removing client \'"+allClientThreads[pos].username+"\' : thread " + iD + " at " + pos);
+            serverUI.display("Removing client thread " + iD + " at " + pos);
 	    if (pos < clientCount-1){
                 for (int i = pos+1; i < clientCount; i++){
                 	allClientThreads[i-1] = allClientThreads[i];
@@ -408,6 +433,7 @@ public class SocketServer implements Runnable {
      */
     public void shutdown () {
     	serverUI.display("Shutting down the Server...");
+    	db.close();
     	for (int i = 0; i < clientCount; i++) {
     		serverUI.display("Removing client thread " + allClientThreads[i].username + " at " + i);
 			

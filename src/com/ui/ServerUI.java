@@ -254,6 +254,7 @@ public class ServerUI extends JFrame {
 		
 		text = logtime.toString()+": -> "+text +"\n"+ displayTextArea.getText();
 		displayTextArea.setText(text);
+		displayScrollPane.getVerticalScrollBar().setValue(0);
 	}
 
 	/**

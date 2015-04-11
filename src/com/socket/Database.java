@@ -17,6 +17,31 @@ public class Database {
 	private int dbServerPort = 3306;
 	private String dbUser = "root";
 	private String dbPass = "";
+	private ResultSet result;
+	private String name;
+	private String photoPath;
+	private String about;
+	/**
+	 * @return the name
+	 */
+	public String getName() {
+		return name;
+	}
+
+	/**
+	 * @return the picture
+	 */
+	public String getPhotoPath() {
+		return photoPath;
+	}
+
+	/**
+	 * @return the about
+	 */
+	public String getAbout() {
+		return about;
+	}
+
 	
 
 	/**
@@ -78,8 +103,6 @@ public class Database {
 	 */
 	public Database(String server, int port, String db, String user, String pass) 
 			throws ClassNotFoundException, SQLException{
-		if (serverAddress.startsWith("127.0.0."))
-			dbPass = "pass";
         if (server	!= null) 	serverAddress 	= server;
         if (db		!= null)	databaseName 	= db;
         if (user	!= null)	dbUser 			= user;
@@ -154,13 +177,26 @@ public class Database {
 			throws SQLException {
 		try {
 			java.sql.PreparedStatement query = connection.prepareStatement(sql);
-			ResultSet result = query.executeQuery();
+			result = query.executeQuery();
 			return result.next();
 		} catch (SQLException e1) {
 			java.sql.PreparedStatement query = connection.prepareStatement(sql);
 			ResultSet result = query.executeQuery();
 			return result.next();
 		}
+	}
+	public void LoadProfileData(String user){
+		String sql = "SELECT `name` , `photo_path` , `about` FROM `user` WHERE `username` = '"+user+"'" ;
+	    try {
+			if( hasResult(sql)) {
+				name = result.getString("name");
+				photoPath = result.getString("photo_path");
+				about = result.getString("about");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	    	
 	}
 	
 	/**
