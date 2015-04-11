@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/jre7"/>
+	<classpathentry kind="lib" path="E:/PROGRAMMING/JAVA/CORES_of_JAVA/JavaExternalResources/mysql-connector-java-5.1.25/mysql-connector-java-5.1.25-bin.jar" sourcepath="E:/PROGRAMMING/JAVA/CORES_of_JAVA/JavaExternalResources/mysql-connector-java-5.1.25/src">
+		<attributes>
+			<attribute name="javadoc_location" value="http://dev.mysql.com/"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
